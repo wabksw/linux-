@@ -118,6 +118,7 @@ Hostname_Config
 
 if [[ `echo $?` -eq 0 ]];then
         echo -e "${Info}   初始化服务器环境安装完成"
+        rm -f Install_Init.sh
 else
         echo -e "${Error}  初始化服务器环境安装失败"
 fi

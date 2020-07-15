@@ -19,23 +19,20 @@ Install_Pack(){
         yum install wget ntpdate telnet dstat tmux vim sysstat net-tools -y
 }
 
-#定义别名
-Alias_Config(){
-        alias cls='clear'
-        alias vi='vim'
-        alias grep='grep --color'
-        alias ll='ls -l --color=auto'
-        alias ls='ls --color=auto'
-}
 
-#定义回收站
-Recycle_Bin(){
+#定义别名、回收站
+Recycle_Bin_And_Alias(){
 cat >> /root/.bashrc << EOF
+alias cls='clear'
+alias vi='vim'
+alias grep='grep --color'
+alias ll='ls -l --color=auto'
+alias ls='ls --color=auto'
 alias rm='myrm'
 myrm(){
-    for target in \@
+    for target in \$@
     do
-        if [[ "\$target" =~ ^-[rf]+\$ ]]; then
+        if [[ "\$target" =~ ^-[rf]+$ ]]; then
             continue
         fi
     mv -i \$target ~/.recycle
@@ -106,8 +103,7 @@ Hostname_Config(){
 }
 
 Install_Pack
-Alias_Config
-Recycle_Bin
+Recycle_Bin_And_Alias
 Disable_Firewall_And_Selinux
 Create_Directory
 Add_Mirror_Source

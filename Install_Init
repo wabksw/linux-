@@ -8,19 +8,30 @@
 #查看当前占用I/O、cpu、内存等最高的进程信息
 #dstat --top-mem --top-io --top-cpu
 ###2019-09-17  修复别名未生效bug
-###此条命令在shell脚本外执行是生效的
-#source /root/.bashrc
  
- 
-hostname=server
-yum install wget ntpdate telnet dstat tmux vim sysstat net-tools -y
+#定义终端输出颜色
+Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m"
+Info="${Green_font_prefix}[信息:]${Font_color_suffix}"
+Error="${Red_font_prefix}[错误:]${Font_color_suffix}"
+
+#安装常用软件包
+Install_Pack(){
+        yum install wget ntpdate telnet dstat tmux vim sysstat net-tools -y
+}
+
+#定义别名
+Alias_Config(){
+        alias cls='clear'
+        alias vi='vim'
+        alias grep='grep --color'
+        alias ll='ls -l --color=auto'
+        alias ls='ls --color=auto'
+}
+
+#定义回收站
+Recycle_Bin(){
 cat >> /root/.bashrc << EOF
-alias cls='clear'
-alias vi='vim'
-alias rm=myrm
-alias grep='grep --color'
-alias ll='ls -l --color=auto'
-alias ls='ls --color=auto'
+alias rm='myrm'
 myrm(){
     for target in \@
     do
@@ -31,32 +42,82 @@ myrm(){
     done
 }
 EOF
-sed -i.bak 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
-setenforce 0
-systemctl disable firewalld
-systemctl stop firewalld
-hostnamectl set-hostname $hostname
-mkdir -p /home/bks/tools
-mkdir ~/.recycle
- 
-mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
-curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo
-wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
- 
-yum install -y yum-utils
-yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-yum clean all
-yum makecache fast
-yum install -y docker-ce
-systemctl stop docker
-systemctl disable docker
- 
-\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-/usr/sbin/ntpdate pool.ntp.org
+}
+
+#禁用selinux和防火墙
+Disable_Firewall_And_Selinux(){
+        sed -i.bak 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+        setenforce 0
+        systemctl disable firewalld
+        systemctl stop firewalld
+}
+
+#创建安装包目录
+Create_Directory(){
+        mkdir -p /home/bks/tools
+        mkdir ~/.recycle
+}
+
+#添加镜像源
+Add_Mirror_Source(){
+        mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
+        curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo
+        wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+        yum clean all
+        yum makecache fast
+}
+
+#添加k8s需要的yum源
+K8s_Source(){
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+EOF
+}
+
+#安装docker,默认不启用
+Install_Docker(){
+        yum install -y yum-utils
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        yum install -y docker-ce
+        systemctl stop docker
+        systemctl disable docker
+}
+
+#时间同步
+Time_Synchronization(){
+        \cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+        /usr/sbin/ntpdate pool.ntp.org
 cat >>  /var/spool/cron/root  << EOF
 #time sync by bks
 */10 * * * * /usr/sbin/ntpdate pool.ntp.org && /sbin/hwclock -w >/dev/null 2>&1
 0 0 * * * /usr/bin/rm -rf /root/.recycle/* >/dev/null 2>&1
 EOF
-crontab -l
-date +%z
+}
+
+#配置主机名
+Hostname_Config(){
+        echo
+        read -p "请输入主机名：" hostname
+        hostnamectl set-hostname $hostname
+}
+
+Install_Pack
+Alias_Config
+Recycle_Bin
+Disable_Firewall_And_Selinux
+Create_Directory
+Add_Mirror_Source
+K8s_Source
+Install_Docker
+Time_Synchronization
+Hostname_Config
+
+if [[ `echo $?` -eq 0 ]];then
+        echo -e "${Info}   初始化服务器环境安装完成"
+else
+        echo -e "${Error}  初始化服务器环境安装失败"
+fi

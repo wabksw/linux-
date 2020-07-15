@@ -1,0 +1,62 @@
+#!/bin/bash
+#author by bks
+###2018-10-15  新增回收站功能,每天清空
+###2018-12-24  新增同步系统硬件时间
+###2019-03-19  新增安装docker,sysstat
+###2019-04-23  新增grep，ll，ls命令查找高亮关键字
+###2019-04-23  新增dstat
+#查看当前占用I/O、cpu、内存等最高的进程信息
+#dstat --top-mem --top-io --top-cpu
+###2019-09-17  修复别名未生效bug
+###此条命令在shell脚本外执行是生效的
+#source /root/.bashrc
+ 
+ 
+hostname=server
+yum install wget ntpdate telnet dstat tmux vim sysstat net-tools -y
+cat >> /root/.bashrc << EOF
+alias cls='clear'
+alias vi='vim'
+alias rm=myrm
+alias grep='grep --color'
+alias ll='ls -l --color=auto'
+alias ls='ls --color=auto'
+myrm(){
+    for target in \@
+    do
+        if [[ "\$target" =~ ^-[rf]+\$ ]]; then
+            continue
+        fi
+    mv -i \$target ~/.recycle
+    done
+}
+EOF
+sed -i.bak 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+setenforce 0
+systemctl disable firewalld
+systemctl stop firewalld
+hostnamectl set-hostname $hostname
+mkdir -p /home/bks/tools
+mkdir ~/.recycle
+ 
+mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
+curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo
+wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+ 
+yum install -y yum-utils
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum clean all
+yum makecache fast
+yum install -y docker-ce
+systemctl stop docker
+systemctl disable docker
+ 
+\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+/usr/sbin/ntpdate pool.ntp.org
+cat >>  /var/spool/cron/root  << EOF
+#time sync by bks
+*/10 * * * * /usr/sbin/ntpdate pool.ntp.org && /sbin/hwclock -w >/dev/null 2>&1
+0 0 * * * /usr/bin/rm -rf /root/.recycle/* >/dev/null 2>&1
+EOF
+crontab -l
+date +%z

@@ -8,6 +8,8 @@
 #查看当前占用I/O、cpu、内存等最高的进程信息
 #dstat --top-mem --top-io --top-cpu
 ###2019-09-17  修复别名未生效bug
+###2021-06-29  新增atop，记录系统资源与进程日志
+#读取atop日志文件： atop  -r  XXX
  
 #定义终端输出颜色
 Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m"
@@ -19,6 +21,10 @@ Install_Pack(){
         yum install wget ntpdate telnet dstat tmux vim sysstat net-tools -y
 }
 
+#启动服务
+Start_Services(){
+        systemctl enable --now atop
+}
 
 #定义别名、回收站
 Recycle_Bin_And_Alias(){
@@ -103,6 +109,7 @@ Hostname_Config(){
 }
 
 Install_Pack
+Start_Services
 Recycle_Bin_And_Alias
 Disable_Firewall_And_Selinux
 Create_Directory

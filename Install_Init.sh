@@ -18,11 +18,12 @@ Error="${Red_font_prefix}[错误:]${Font_color_suffix}"
 
 #安装常用软件包
 Install_Pack(){
-        yum install wget ntpdate telnet dstat tmux vim sysstat net-tools -y
+        yum install wget ntpdate telnet dstat tmux vim sysstat net-tools perf atop -y
 }
 
 #启动服务
 Start_Services(){
+        sed -i "s/LOGGENERATIONS=28/LOGGENERATIONS=7/g" /etc/sysconfig/atop 
         systemctl enable --now atop
 }
 
@@ -99,6 +100,12 @@ cat >>  /var/spool/cron/root  << EOF
 */10 * * * * /usr/sbin/ntpdate pool.ntp.org && /sbin/hwclock -w >/dev/null 2>&1
 0 0 * * * /usr/bin/rm -rf /root/.recycle/* >/dev/null 2>&1
 EOF
+
+#重启atop
+cat >> /etc/cron.d/atop << EOF
+0 1 * * * root systemctl try-restart atop
+EOF
+
 }
 
 #配置主机名
